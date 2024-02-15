@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      margin: auto;
+      background-color: #eee;
+    }
+  </style>
+</head>
+
+<!-- <button type="button" onclick="makeType='waypoint';">waypoint</button> -->
+
+
+<canvas id="board" width="700" height="700"></canvas>
+<span id="crushedAmount" style="font-size: 40px;">Total crushed: 0</span><br>
+<span id="movesLeft" style="font-size: 40px;">Moves left: 0</span>
+
+
+<script>
+
+  const blockColors = ['N/A', 'red', 'blue', 'green', 'yellow', 'orange', 'gray', 'brown']
+  const canvasW =  700;
+  const canvasH = 700;
+
+  const BLOCKSIZE = 100;
+  const GRIDSIZE = Math.floor(canvasW / BLOCKSIZE)
+
+  var mouseDownGrid = [-1, -1]
+
+  var lastMouseSpot = [-1,-1]
+
+  var blocks = [];
+
+  var animating = false; // falling blocks
+  var animating2 = false;  // switching blocks
+  var showingTextTime = 0; // showing text time left
+  var textShown = "";
+  const textTypes = ["yolo", "swag", "sigma", "rizz", "skibidi"]
+
+
+  var switches = []
+
+  var grid = [];
+
+  var movesLeft = 1;
+  document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft;
+
+  var totalCrushed = 0;
+
+  var noMovesWindowUp = false;
+
+  function generate_level(allZeros){
+    grid = [];
+    let i = 0;
+    while (i < GRIDSIZE){
+      let j = 0;
+      row = []
+      while (j < GRIDSIZE){
+        if (allZeros == true){
+          row.push(0);
+        } else {
+          row.push(Math.floor(Math.random()*6)+1);
+        }
+        j += 1;
+      }
+      grid.push(row);
+      i+=1;
+    }
+
+    if (allZeros != true){
+      groups = check_level(false)
+      if (groups > 0){
+        console.log("regenerating level")
+        generate_level()
+      }
+    }
+
+  }
+
+
+  function draw_level(){
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvasW, canvasH);
+
+
+    if (animating){
+      let madeMove = false;
+      for (let b = 0; b < blocks.length; b++) {
+
+        let moveDown = false;
+        const moveSpeed = 0.1
+
+
+        const blockType = blockColors[blocks[b][2]]
+        ctx.fillStyle = blockType
+        ctx.fillRect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
+        
+        ctx.beginPath()
+        ctx.rect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
+        ctx.stroke()
+
+
+        if (blocks[b][1] < GRIDSIZE-1.1){
+          moveDown = true;
+          for (let b2 = 0; b2 < blocks.length; b2++){
+            if (b2 != b) {
+              if (blocks[b][0] == blocks[b2][0] && Math.abs(blocks[b][1]+moveSpeed*0.9 - blocks[b2][1]) < 1) {
+                moveDown = false;
+                break
+              }
+
+            }
+          }
+        } else {
+          // console.log("hit bottom")
+        }
+
+        if (moveDown){
+          madeMove = true;
+
+          blocks[b][1] += moveSpeed;
+        }
+        
+
+
+
+
+      }
+
+      for (let b2 = 0; b2 < GRIDSIZE; b2++) {
+        canPlace = true;
+        for (let b = 0; b < blocks.length; b++){
+          if (b2 == blocks[b][0] && blocks[b][1] <= 0){
+            canPlace = false;
+          }
+        }
+
+        if (canPlace){
+          if (blocks.length < 120){
+            blocks.push([b2, -1, Math.floor(Math.random()*6+1)])
+            madeMove = true;
+          }
+        }
+
+      }
+
+      if (!madeMove){
+        animating = false
+        generate_level(true)
+        for (let b = 0; b < blocks.length; b++) {
+          grid[Math.round(blocks[b][0])][Math.round(blocks[b][1])] = blocks[b][2]
+        }
+
+        const newCrushed = check_level();
+
+        if (newCrushed > 0){
+          showingTextTime = 40
+          textShown = textTypes[Math.floor(Math.random()*textTypes.length)]
+        }
+        document.getElementById("crushedAmount").innerHTML = "Total Crushed: " + totalCrushed
+        draw_level();
+
+      }
+
+      
+
+    } else if (animating2) {
+
+
+      for (let b = 0; b < blocks.length; b++) {
+        const blockType = blockColors[blocks[b][2]]
+        ctx.fillStyle = blockType
+        ctx.fillRect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
+        
+        ctx.beginPath()
+        ctx.rect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
+        ctx.stroke()
+      }
+
+      for (let i=0; i<2; i++) {
+        const ind = switches[i]
+        const location = blocks[ind];
+        target = location[3]
+
+        if (target[0] < location[0]){
+          blocks[ind][0] -= 0.1;
+        } else if (target[0] > location[0]){
+          blocks[ind][0] += 0.1;
+        }
+
+        if (target[1] < location[1]){
+          blocks[ind][1] -= 0.1;
+        } else if (target[1] > location[1]){
+          blocks[ind][1] += 0.1;
+        }
+
+        if (Math.abs(location[0]-target[0]) < 0.1 && Math.abs(location[1]-target[1]) < 0.1){
+          animating2 = false;
+        }
+      }
+
+      if (!animating2){
+        for (let b = 0; b < blocks.length; b++) {
+          grid[Math.round(blocks[b][0])][Math.round(blocks[b][1])] = blocks[b][2]
+        }
+        totalCrushed += check_level()
+
+        
+
+        draw_level()
+      }
+
+
+
+    } else {
+      for (let row_num = 0; row_num < grid.length; row_num++) {
+        for (let col_num = 0; col_num < grid[row_num].length; col_num++) {
+          const blockType = blockColors[grid[row_num][col_num]]
+          if (blockType != 'N/A') {
+            
+            ctx.fillStyle = blockType
+            ctx.fillRect(row_num*BLOCKSIZE, col_num*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
+            
+            ctx.beginPath()
+            ctx.rect(row_num*BLOCKSIZE, col_num*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
+            ctx.stroke()
+
+            // ctx.font = "16px serif";
+            // ctx.fillStyle = "black"
+            // ctx.fillText(row_num + "," + col_num, row_num*BLOCKSIZE+BLOCKSIZE/2, col_num*BLOCKSIZE+BLOCKSIZE/2);
+          }
+        }
+      }
+
+      if (movesLeft <= 0){
+        ctx.fillStyle = "pink";
+        ctx.fillRect(canvasW*0.1, canvasH*0.2, canvasW*0.8, canvasH*0.6);
+
+        ctx.font = "32px serif";
+        ctx.fillStyle = "black"
+        ctx.fillText("No Moves left!", canvasW/2-100, canvasH*0.4);
+
+        ctx.fillStyle = "rgb(255,0,0)"
+        ctx.fillRect(canvasW*0.1+20, canvasH*0.9-200, 200, 80);
+        ctx.fillStyle = "black"
+        ctx.fillText("Quit", canvasW*0.1+40, canvasH*0.9-150);
+
+        ctx.fillStyle = "rgb(0,255,0)"
+        ctx.fillRect(canvasW*0.9-220, canvasH*0.9-200, 200, 80);
+        ctx.fillStyle = "black"
+        ctx.fillText("Continue", canvasW*0.9-200, canvasH*0.9-150);
+
+        noMovesWindowUp = true;
+
+      }
+
+
+    }
+
+    if (showingTextTime > 0 && movesLeft > 0){
+      ctx.font = "64px serif";
+      ctx.fillStyle = "black"
+      ctx.fillText(textShown, canvasW/2-100, canvasH*0.4);
+      showingTextTime--;
+
+    }
+  }
+
+  function check_level(triggerAnimation){
+
+    let matches = []
+
+    const minMatchSize = 3
+
+    for (let row_num = 0; row_num < grid.length; row_num++) {
+      let lastRowVal = -1;
+      let lastRowCount = 1;
+      for (let col_num = 0; col_num < grid[row_num].length; col_num++) {
+        if (lastRowVal == grid[row_num][col_num] && grid[row_num][col_num] > 0){
+          lastRowCount += 1;
+          // console.log("lastRowCount", lastRowCount)
+        } else {
+          lastRowCount = 1;
+        }
+        lastRowVal = grid[row_num][col_num];
+
+        if (lastRowCount == minMatchSize){
+          matches.push([row_num, col_num-2]);
+          matches.push([row_num, col_num-1]);
+          matches.push([row_num, col_num]);
+        } else if (lastRowCount > minMatchSize){
+          matches.push([row_num, col_num]);       
+        }
+      }
+    }
+
+
+    for (let row_num = 0; row_num < grid.length; row_num++) {
+      let lastRowVal = -1;
+      let lastRowCount = 1;
+      for (let col_num = 0; col_num < grid[row_num].length; col_num++) {
+
+        if (lastRowVal == grid[col_num][row_num] && grid[col_num][row_num] > 0){
+          lastRowCount += 1;
+        } else {
+          lastRowCount = 1;
+        }
+        lastRowVal = grid[col_num][row_num];
+
+        if (lastRowCount == minMatchSize){
+          matches.push([col_num-2, row_num]);
+          matches.push([col_num-1, row_num]);
+          matches.push([col_num, row_num]);
+        } else if (lastRowCount > minMatchSize){
+          matches.push([col_num, row_num]);       
+        }
+      }
+    }
+
+
+
+    let groups = []
+    let added = true;
+
+    let recursiveTimeout = 0;
+    while (recursiveTimeout < 100 && added) {
+      added = false
+
+
+      for (let m = 0; m < matches.length; m++) {
+        let inGroup = false
+        const color = grid[matches[m][0]][matches[m][1]]
+
+        for (let g = 0; g < groups.length; g++) {
+
+          if (color != grid[groups[g][0][0]][groups[g][0][1]]){
+            continue
+          }
+
+          // console.log("group", groups[g], "compare", matches[m])
+          let touching = false;
+          for (let g2 = 0; g2 < groups[g].length; g2++) {
+
+
+            if (matches[m][0] == groups[g][g2][0] && matches[m][1] == groups[g][g2][1]){ // already in the group
+              inGroup = true;
+              touching = false;
+              added = false;
+              break;
+
+            } else if (Math.abs(matches[m][0]-groups[g][g2][0]) + Math.abs(matches[m][1]-groups[g][g2][1]) == 1){ // touching
+              added = true
+              touching = true;
+              inGroup = true;
+            } 
+          }
+
+          if (touching){
+            groups[g].push(matches[m])
+            break
+          }
+          if (inGroup){
+            break
+          }
+        }
+        
+        if (inGroup == false){
+
+          groups.push([matches[m]])
+          added = true;
+        }
+      }
+      recursiveTimeout += 10;
+    }
+
+    if (recursiveTimeout == 100){
+      console.log("PROBLEM: Recursive timed out")
+    }
+
+
+
+    // console.log("groups", groups)
+
+    // console.log("group count", groups.length)
+
+
+
+
+    if (triggerAnimation == false){
+      return groups.length
+    }
+
+    let crushed = 0
+    for (let g = 0; g < groups.length; g++) {
+      if (grid[groups[g][0][0]][groups[g][0][1]] == 7) {
+        
+        if (groups[g][0][0] == groups[g][1][0]){
+          for (let r=0; r<GRIDSIZE; r++){
+            grid[groups[g][0][0]][r] = 0
+            crushed+=grid[r].length;
+          }
+        } else {
+          for (let r=0; r<GRIDSIZE; r++){
+            grid[r][groups[g][0][1]] = 0
+            crushed+=grid[r].length;
+          }
+        }
+        animating = true;
+
+      }
+      let gl = groups[g].length;
+      for (let g2 = 0; g2 < groups[g].length; g2++) {
+        const c = groups[g][g2]
+        if (gl > 3) {
+          grid[c[0]][c[1]] = 7;
+          // console.log("hit big")
+          gl = 0
+          crushed++;
+        } else {
+          grid[c[0]][c[1]] = 0;
+          crushed++;
+        }
+        animating = true;
+      }
+    }
+
+
+    if (animating){
+      blocks = [];
+      for (let row_num = 0; row_num < grid.length; row_num++) {
+        for (let col_num = 0; col_num < grid[row_num].length; col_num++) {
+          if (grid[row_num][col_num] > 0){
+            blocks.push([row_num, col_num, grid[row_num][col_num]])
+          }
+        }
+      }
+
+    }
+
+ 
+
+    let lastColVal = 0;
+    let lastColCount = 0;
+
+    return crushed
+
+
+
+
+  }
+
+
+  function processMouseUp(mouseX, mouseY){
+    if (!animating && movesLeft>0){
+      if (mouseX > 0 && mouseX < canvasW && mouseY > 0 && mouseY < canvasH){
+          const mouseGrid = [Math.floor(mouseX/BLOCKSIZE), Math.floor(mouseY/BLOCKSIZE)]
+        
+
+          if (Math.abs(mouseDownGrid[0]-mouseGrid[0]) + Math.abs(mouseDownGrid[1]-mouseGrid[1]) == 1) {
+            const val1 = grid[mouseGrid[0]][mouseGrid[1]];
+            const val2 = grid[mouseDownGrid[0]][mouseDownGrid[1]];
+
+
+            // grid[mouseGrid[0]][mouseGrid[1]] = val2;
+            // grid[mouseDownGrid[0]][mouseDownGrid[1]] = val1;
+
+          
+
+            switches = []
+            blocks = [];
+            let ind = 0
+            for (let row_num = 0; row_num < grid.length; row_num++) {
+              for (let col_num = 0; col_num < grid[row_num].length; col_num++) {
+                if (grid[row_num][col_num] > 0){
+
+                  if (row_num == mouseGrid[0] && col_num == mouseGrid[1]){
+                    switches.push(ind)
+                    blocks.push([row_num, col_num, grid[row_num][col_num], [mouseDownGrid[0], mouseDownGrid[1]]])
+                  } else if (row_num == mouseDownGrid[0] && col_num == mouseDownGrid[1]){
+                    switches.push(ind)
+                    blocks.push([row_num, col_num, grid[row_num][col_num], [mouseGrid[0], mouseGrid[1]]])
+                  } else {
+                    blocks.push([row_num, col_num, grid[row_num][col_num]])
+                  }
+                  ind++;
+                }
+              }
+            }
+            animating2 = true;
+
+            movesLeft--;
+
+            document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft
+            if (movesLeft < 0){
+              console.log("no moves left!")
+            }
+
+            
+
+
+
+            // check_level()
+            // draw_level()
+          }
+        }
+
+        mouseDownGrid = [-1, -1]
+    } else if (noMovesWindowUp) {
+
+      if (mouseX - (canvasW*0.1+20) > 0 && mouseX - (canvasW*0.1+20) < 200){
+        if (mouseY - (canvasH*0.9-200) > 0 && mouseY - (canvasH*0.9-200) < 80){
+          console.log("quit");
+          location.href = "candy_crush_index.html"
+        }
+      }
+
+
+      if (mouseX - (canvasW*0.9-220) > 0 && mouseX - (canvasW*0.9-220) < 200){
+        if (mouseY - (canvasH*0.9-200) > 0 && mouseY - (canvasH*0.9-200) < 80){
+          console.log("Continue");
+
+          movesLeft = 10;
+          document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft;
+
+          draw_level()
+
+        }
+      }
+    }
+
+  }
+
+
+
+
+  document.addEventListener("DOMContentLoaded", function() {
+    
+    const canvas = document.getElementById("board");
+
+
+    function getTouchPos(canvasDom, touchEvent) {
+      var rect = canvasDom.getBoundingClientRect();
+      return {
+        x: touchEvent.touches[0].clientX - rect.left,
+        y: touchEvent.touches[0].clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener("touchstart", function (e) {
+        mousePos = getTouchPos(canvas, e);
+        var touch = e.touches[0];
+        const mouseX = touch.clientX;
+        const mouseY = touch.clientY;
+
+        if (mouseX > 0 && mouseX < canvasW && mouseY > 0 && mouseY < canvasH){
+          mouseDownGrid = [Math.floor(mouseX/BLOCKSIZE), Math.floor(mouseY/BLOCKSIZE)]
+        }
+        // console.log(mouseDownGrid)
+      }, false);
+
+    canvas.addEventListener("touchmove", function (e) {
+      mousePos = getTouchPos(canvas, e);
+      var touch = e.touches[0];
+      const mouseX = touch.clientX;
+      const mouseY = touch.clientY;
+
+      lastMouseSpot = [mouseX, mouseY]
+    }, false);
+
+
+    canvas.addEventListener("touchend", function (e) {
+
+      const mouseX = lastMouseSpot[0];
+      const mouseY = lastMouseSpot[1];
+      processMouseUp(mouseX, mouseY);
+
+
+    }, false);
+
+    canvas.addEventListener("mousedown", function() {      
+      scale = 1;//document.getElementById("scale").value
+      if (!animating){
+        const mouseX = (event.clientX - canvas.getBoundingClientRect().left);
+        const mouseY = (event.clientY - canvas.getBoundingClientRect().top);
+
+        if (mouseX > 0 && mouseX < canvasW && mouseY > 0 && mouseY < canvasH){
+          mouseDownGrid = [Math.floor(mouseX/BLOCKSIZE), Math.floor(mouseY/BLOCKSIZE)]
+        }
+      }
+    });
+
+
+
+
+    canvas.addEventListener("mouseup", function() {
+
+      scale = 1;
+
+      const mouseX = (event.clientX - canvas.getBoundingClientRect().left);
+      const mouseY = (event.clientY - canvas.getBoundingClientRect().top);
+
+      processMouseUp(mouseX, mouseY);
+      
+
+
+      // draw_level();
+
+    });
+
+    canvas.addEventListener("mousemove", function(event) {
+      
+
+
+    
+    });
+
+    // Show cursor on Escape key press
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape") {
+        // document.body.style.cursor = "default";
+        console.log("Escape key pressed. Cursor shown.");
+      } 
+    });
+
+    document.addEventListener("keyup", function(event) {
+      
+    });
+  });
+
+  generate_level();
+  draw_level();
+
+
+  // clearInterval(loopInterval);
+  // refreshRate = 50;
+
+  function process_animation(){
+    if (animating || animating2 || showingTextTime>=0){
+      draw_level()
+    }
+
+  }
+  myVar = setInterval(process_animation, 20);
+
+
+
+
+
+
+
+</script>
+
+</html>
