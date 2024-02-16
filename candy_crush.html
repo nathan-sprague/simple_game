@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<!-- <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
@@ -15,24 +15,61 @@
       background-color: #eee;
     }
   </style>
-</head>
-
-<!-- <button type="button" onclick="makeType='waypoint';">waypoint</button> -->
+</head> -->
 
 
 <canvas id="board" width="700" height="700"></canvas>
 <span id="crushedAmount" style="font-size: 40px;">Total crushed: 0</span><br>
-<span id="movesLeft" style="font-size: 40px;">Moves left: 0</span>
+<span id="movesLeft" style="font-size: 40px;">Moves left: 0</span><br>
+
+<span id="level" style="font-size: 40px;">Level: N/A</span><br>
+
+<input type="button" style="height:100px;width:300px;font-size:40px;" value="Home" onclick="location.href = 'index.html';">
 
 
 <script>
 
-  const blockColors = ['N/A', 'red', 'blue', 'green', 'yellow', 'orange', 'gray', 'brown']
-  const canvasW =  700;
-  const canvasH = 700;
+  levelMoves = [20, 15, 15, 15, 15]
 
-  const BLOCKSIZE = 100;
-  const GRIDSIZE = Math.floor(canvasW / BLOCKSIZE)
+  levelCrush = [20*3+5, 15*3+5, 15*3+5, 15*3+5, 15*3+10]
+
+  levelMaxColors = [7, 8, 9, 10, 11]
+
+
+  const params = new URLSearchParams(window.location.search);
+  var level = params.get('level'); // 'value1'
+
+  level = level ? parseInt(level, 10) : 0;
+
+  var livesCount = params.get('liveStatus'); // 'value1'
+
+  livesCount = livesCount ? parseInt(livesCount, 10) : 5;
+
+  if (level > 0){
+  } else {
+    level = 0;
+  }
+
+  if (livesCount > 0){
+  } else {
+    livesCount = 5;
+  }
+
+  var numColors = levelMaxColors[level]
+  
+
+
+  console.log("level", level)
+
+
+
+  const blockColors = ['N/A','brown', "fuchsia", 'olive', 'teal', 'red', 'blue', 'green', 'yellow', 'orange', 'gray', "purple", "cyan"]
+  var canvasW =  700;
+  var canvasH = 700;
+
+  const GRIDSIZE = 7 + Math.floor(level/3)
+  var BLOCKSIZE = Math.floor(canvasW/GRIDSIZE);
+  
 
   var mouseDownGrid = [-1, -1]
 
@@ -51,12 +88,66 @@
 
   var grid = [];
 
-  var movesLeft = 1;
-  document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft;
+  // var movesLeft = 1;
 
+  var movesLeft = levelMoves[level];
+  // movesLeft = 2;
+
+  var crushTarget = levelCrush[level]
+  // crushTarget = 1
+  
   var totalCrushed = 0;
 
+
+
+
+  function resizeCanvas() {
+    console.log("resizing")
+    var canvas = document.getElementById('board');
+    var maxWidth = window.innerWidth; // Viewport width
+    var maxHeight = window.innerHeight; // Viewport height
+    var size = Math.min(maxWidth, maxHeight);
+
+
+
+    // Adjust for high DPI displays
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+
+    canvasH = size;
+    canvasW = size;
+    BLOCKSIZE = Math.floor(canvasW/GRIDSIZE);
+
+    console.log(size, canvas.style.width, canvas.style.height, dpr)
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    draw_level()
+
+    // Your drawing logic here
+    // Ensure drawing logic is scalable or redrawn based on new dimensions
+  }
+
+  // Initial resize
+  resizeCanvas();
+
+  // Resize canvas on viewport size change
+  window.addEventListener('resize', resizeCanvas);
+
+
+  document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft;
+  document.getElementById("crushedAmount").innerHTML = "Total Crushed: " + totalCrushed + "/" + crushTarget;
+  document.getElementById("level").innerHTML = "Level: " + level;
+  
+
   var noMovesWindowUp = false;
+
+
+  
 
   function generate_level(allZeros){
     grid = [];
@@ -68,7 +159,7 @@
         if (allZeros == true){
           row.push(0);
         } else {
-          row.push(Math.floor(Math.random()*6)+1);
+          row.push(Math.floor(Math.random()*numColors)+2);
         }
         j += 1;
       }
@@ -147,7 +238,7 @@
 
         if (canPlace){
           if (blocks.length < 120){
-            blocks.push([b2, -1, Math.floor(Math.random()*6+1)])
+            blocks.push([b2, -1, Math.floor(Math.random()*numColors+2)])
             madeMove = true;
           }
         }
@@ -167,7 +258,22 @@
           showingTextTime = 40
           textShown = textTypes[Math.floor(Math.random()*textTypes.length)]
         }
-        document.getElementById("crushedAmount").innerHTML = "Total Crushed: " + totalCrushed
+
+
+        document.getElementById("crushedAmount").innerHTML = "Total Crushed: " + totalCrushed + "/" + crushTarget
+
+        if (totalCrushed >= crushTarget){
+          console.log("win")
+
+          draw_level()
+          return
+        }
+
+
+        if (movesLeft < 0){
+          console.log("no moves left!")
+        }
+
         draw_level();
 
       }
@@ -223,6 +329,7 @@
 
 
     } else {
+      console.log("bs", BLOCKSIZE)
       for (let row_num = 0; row_num < grid.length; row_num++) {
         for (let col_num = 0; col_num < grid[row_num].length; col_num++) {
           const blockType = blockColors[grid[row_num][col_num]]
@@ -234,35 +341,59 @@
             ctx.beginPath()
             ctx.rect(row_num*BLOCKSIZE, col_num*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
             ctx.stroke()
+            console.log("bs", BLOCKSIZE)
 
             // ctx.font = "16px serif";
             // ctx.fillStyle = "black"
             // ctx.fillText(row_num + "," + col_num, row_num*BLOCKSIZE+BLOCKSIZE/2, col_num*BLOCKSIZE+BLOCKSIZE/2);
           }
         }
+
+
+        if (totalCrushed >= crushTarget){
+          ctx.fillStyle = "pink";
+          ctx.fillRect(canvasW*0.1, canvasH*0.2, canvasW*0.8, canvasH*0.6);
+
+          ctx.font = "32px serif";
+          ctx.fillStyle = "black"
+          ctx.fillText("Nice! You won", canvasW/2-100, canvasH*0.4);
+
+          ctx.fillStyle = "rgb(0,255,0)"
+          ctx.fillRect(canvasW*0.5-100, canvasH*0.9-200, 200, 80);
+          ctx.fillStyle = "black"
+          ctx.fillText("home", canvasW*0.5-60, canvasH*0.9-150);
+
+
+          noMovesWindowUp = true;
+          showingTextTime = -1;
+
+        } else if (movesLeft <= 0){
+          ctx.fillStyle = "pink";
+          ctx.fillRect(canvasW*0.1, canvasH*0.2, canvasW*0.8, canvasH*0.6);
+
+          ctx.font = "32px serif";
+          ctx.fillStyle = "black"
+
+          ctx.fillText("No Moves left!\nlives:" + livesCount, canvasW/2-100, canvasH*0.4);
+
+          ctx.fillStyle = "rgb(255,0,0)"
+          ctx.fillRect(canvasW*0.1+20, canvasH*0.9-200, 200, 80);
+          ctx.fillStyle = "black"
+          ctx.fillText("Home", canvasW*0.1+40, canvasH*0.9-150);
+
+          ctx.fillStyle = "rgb(0,255,0)"
+          ctx.fillRect(canvasW*0.9-220, canvasH*0.9-200, 200, 80);
+          ctx.fillStyle = "black"
+          ctx.fillText("Restart", canvasW*0.9-200, canvasH*0.9-150);
+
+          
+          noMovesWindowUp = true;
+          showingTextTime = -1;
+        }
       }
+      console.log("done drawing")
 
-      if (movesLeft <= 0){
-        ctx.fillStyle = "pink";
-        ctx.fillRect(canvasW*0.1, canvasH*0.2, canvasW*0.8, canvasH*0.6);
-
-        ctx.font = "32px serif";
-        ctx.fillStyle = "black"
-        ctx.fillText("No Moves left!", canvasW/2-100, canvasH*0.4);
-
-        ctx.fillStyle = "rgb(255,0,0)"
-        ctx.fillRect(canvasW*0.1+20, canvasH*0.9-200, 200, 80);
-        ctx.fillStyle = "black"
-        ctx.fillText("Quit", canvasW*0.1+40, canvasH*0.9-150);
-
-        ctx.fillStyle = "rgb(0,255,0)"
-        ctx.fillRect(canvasW*0.9-220, canvasH*0.9-200, 200, 80);
-        ctx.fillStyle = "black"
-        ctx.fillText("Continue", canvasW*0.9-200, canvasH*0.9-150);
-
-        noMovesWindowUp = true;
-
-      }
+      
 
 
     }
@@ -402,7 +533,7 @@
 
     let crushed = 0
     for (let g = 0; g < groups.length; g++) {
-      if (grid[groups[g][0][0]][groups[g][0][1]] == 7) {
+      if (grid[groups[g][0][0]][groups[g][0][1]] == 1) {
         
         if (groups[g][0][0] == groups[g][1][0]){
           for (let r=0; r<GRIDSIZE; r++){
@@ -422,7 +553,7 @@
       for (let g2 = 0; g2 < groups[g].length; g2++) {
         const c = groups[g][g2]
         if (gl > 3) {
-          grid[c[0]][c[1]] = 7;
+          grid[c[0]][c[1]] = 1;
           // console.log("hit big")
           gl = 0
           crushed++;
@@ -461,7 +592,7 @@
 
 
   function processMouseUp(mouseX, mouseY){
-    if (!animating && movesLeft>0){
+    if (!animating && movesLeft>0 && totalCrushed < crushTarget){
       if (mouseX > 0 && mouseX < canvasW && mouseY > 0 && mouseY < canvasH){
           const mouseGrid = [Math.floor(mouseX/BLOCKSIZE), Math.floor(mouseY/BLOCKSIZE)]
         
@@ -500,10 +631,12 @@
 
             movesLeft--;
 
-            document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft
-            if (movesLeft < 0){
-              console.log("no moves left!")
+            if (movesLeft <= 0 && totalCrushed < crushTarget){
+              livesCount -= 1;
             }
+
+            document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft
+            
 
             
 
@@ -517,23 +650,40 @@
         mouseDownGrid = [-1, -1]
     } else if (noMovesWindowUp) {
 
-      if (mouseX - (canvasW*0.1+20) > 0 && mouseX - (canvasW*0.1+20) < 200){
-        if (mouseY - (canvasH*0.9-200) > 0 && mouseY - (canvasH*0.9-200) < 80){
-          console.log("quit");
-          location.href = "candy_crush_index.html"
+      if (totalCrushed >= crushTarget){
+
+
+        if (mouseX - (canvasW*0.5-100) > 0 && mouseX - (canvasW*0.5-100) < 200){
+          if (mouseY - (canvasH*0.9-200) > 0 && mouseY - (canvasH*0.9-200) < 80){
+            console.log("home");
+            location.href = "index.html?levelStatus=" + Math.floor(level + 1) + "&liveStatus=" + livesCount
+          }
         }
-      }
 
 
-      if (mouseX - (canvasW*0.9-220) > 0 && mouseX - (canvasW*0.9-220) < 200){
-        if (mouseY - (canvasH*0.9-200) > 0 && mouseY - (canvasH*0.9-200) < 80){
-          console.log("Continue");
+      } else {
+        if (mouseX - (canvasW*0.1+20) > 0 && mouseX - (canvasW*0.1+20) < 200){
+          if (mouseY - (canvasH*0.9-200) > 0 && mouseY - (canvasH*0.9-200) < 80){
+            console.log("quit");
+            location.href = "index.html?levelStatus=" + level + "&liveStatus=" + livesCount
+          }
+        }
 
-          movesLeft = 10;
-          document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft;
 
-          draw_level()
+        if (mouseX - (canvasW*0.9-220) > 0 && mouseX - (canvasW*0.9-220) < 200){
+          if (mouseY - (canvasH*0.9-200) > 0 && mouseY - (canvasH*0.9-200) < 80){
+            console.log("Continue");
 
+            movesLeft = levelMoves[level];
+            totalCrushed = 0;
+            document.getElementById("movesLeft").innerHTML = "Moves left: " + movesLeft;
+            document.getElementById("crushedAmount").innerHTML = "Total Crushed: " + totalCrushed + "/" + crushTarget;
+
+
+
+            draw_level()
+
+          }
         }
       }
     }
@@ -565,7 +715,9 @@
         if (mouseX > 0 && mouseX < canvasW && mouseY > 0 && mouseY < canvasH){
           mouseDownGrid = [Math.floor(mouseX/BLOCKSIZE), Math.floor(mouseY/BLOCKSIZE)]
         }
+        lastMouseSpot = [mouseX, mouseY]
         // console.log(mouseDownGrid)
+         e.preventDefault();
       }, false);
 
     canvas.addEventListener("touchmove", function (e) {
@@ -575,6 +727,7 @@
       const mouseY = touch.clientY;
 
       lastMouseSpot = [mouseX, mouseY]
+       e.preventDefault();
     }, false);
 
 
@@ -584,10 +737,12 @@
       const mouseY = lastMouseSpot[1];
       processMouseUp(mouseX, mouseY);
 
+       e.preventDefault();
+
 
     }, false);
 
-    canvas.addEventListener("mousedown", function() {      
+    canvas.addEventListener("mousedown", function(event) {      
       scale = 1;//document.getElementById("scale").value
       if (!animating){
         const mouseX = (event.clientX - canvas.getBoundingClientRect().left);
@@ -597,12 +752,13 @@
           mouseDownGrid = [Math.floor(mouseX/BLOCKSIZE), Math.floor(mouseY/BLOCKSIZE)]
         }
       }
+       event.preventDefault();
     });
 
 
 
 
-    canvas.addEventListener("mouseup", function() {
+    canvas.addEventListener("mouseup", function(event) {
 
       scale = 1;
 
@@ -610,6 +766,7 @@
       const mouseY = (event.clientY - canvas.getBoundingClientRect().top);
 
       processMouseUp(mouseX, mouseY);
+       event.preventDefault();
       
 
 
@@ -625,16 +782,16 @@
     });
 
     // Show cursor on Escape key press
-    document.addEventListener("keydown", function(event) {
-      if (event.key === "Escape") {
-        // document.body.style.cursor = "default";
-        console.log("Escape key pressed. Cursor shown.");
-      } 
-    });
+    // document.addEventListener("keydown", function(event) {
+    //   if (event.key === "Escape") {
+    //     // document.body.style.cursor = "default";
+    //     console.log("Escape key pressed. Cursor shown.");
+    //   } 
+    // });
 
-    document.addEventListener("keyup", function(event) {
+    // document.addEventListener("keyup", function(event) {
       
-    });
+    // });
   });
 
   generate_level();
@@ -645,8 +802,10 @@
   // refreshRate = 50;
 
   function process_animation(){
-    if (animating || animating2 || showingTextTime>=0){
+    if (animating || animating2 || showingTextTime>0){
+      // console.log("animating", animating, "animating2", animating2, "showingTextTime", showingTextTime)
       draw_level()
+      // console.log("repeating")
     }
 
   }
