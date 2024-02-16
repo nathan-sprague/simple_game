@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
   <style>
     body {
       margin: 0;
@@ -12,21 +12,372 @@
     canvas {
       display: block;
       margin: auto;
-      background-color: #eee;
+      background-color: rgb(30,255,30);
     }
   </style>
 </head>
 
-<!-- <button type="button" onclick="makeType='waypoint';">waypoint</button> -->
 
 
 <canvas id="board" width="700" height="700"></canvas>
-<span id="lives" style="font-size: 40px;">Level: 1</span><br>
-<span id="lives" style="font-size: 40px;">Lives: 10</span><br>
-<input type="button" value="play" onclick="location.href='candy_crush.html'">
 
+<div id="finished" style="visibility:hidden;">
+<span id="instruction" style="font-size: 40px">Congrats you won!<br>Give the output from the email here:<br></span>
+<input type="text" style="width:300px;font-size: 40px;" id="encoder">
+<input type="button" style="width:200px;font-size: 40px;" value="convert" onclick="decode();">
+<span id="res" style="font-size: 40px">Output:<br></span>
+
+</div>
 
 <script>
+  var unlockAmt = 0;
+  var numLives = 0;
+
+  var levelSelected = -1;
+
+  const params = new URLSearchParams(window.location.search);
+  var unlockAmt = params.get('levelStatus'); // 'value1'
+  var numLives = params.get('liveStatus'); // 'value1'
+
+
+  console.log("level: " + unlockAmt)
+  unlockAmt = unlockAmt ? parseInt(unlockAmt, 10) : 0;
+
+
+  
+  foundLives = false
+  console.log("numLives=", numLives)
+  numLives = numLives ? parseInt(numLives, 10) : -1;
+  if (numLives > 0){
+  } else if (numLives == 0){
+    console.log("no lives")
+    numLives = 5;
+    unlockAmt = 0;
+  } else{
+    console.log('no parameters')
+
+
+    numLives = localStorage.getItem('lives');
+    console.log("numlives", numLives)
+    numLives = numLives ? parseInt(numLives, 10) : 0;
+
+
+    unlockAmt = localStorage.getItem('level');
+    unlockAmt = unlockAmt ? parseInt(unlockAmt, 10) : -1;
+
+    if (unlockAmt < 0){
+      console.log('no storage')
+      unlockAmt = 0;
+      numLives = 5;
+    }
+  }
+
+  if (true){
+    console.log("saving")
+    localStorage.setItem('key', 'value');
+
+    localStorage.setItem('lives', numLives+"");
+    localStorage.setItem('level', unlockAmt+"");
+  }
+
+
+
+  function stringToAsciiArray(str, offset) {
+    let asciiArray = [];
+    for (let i = 0; i < str.length; i++) {
+      asciiArray.push((str.charCodeAt(i)+offset)%256);
+    }
+    return asciiArray;
+  }
+  function asciiArrayToString(asciiArray, offset) {
+      // Initialize an empty string to hold the characters
+      let resultString = '';
+      
+      // Loop through each ASCII value in the array
+      for (let i = 0; i < asciiArray.length; i++) {
+          // Convert ASCII to character and concatenate it to the result string
+          resultString += String.fromCharCode((asciiArray[i]-offset)%256);
+      }
+      
+      // Return the reconstructed string
+      return resultString;
+  }
+
+  // ogText = "123-Abfrfe-34243Dsfr"
+
+  // ascii = stringToAsciiArray(ogText, 10)
+
+  // back = asciiArrayToString(ascii, 0)
+
+  // console.log("back", back)
+  // a = back
+
+  // ascii = stringToAsciiArray(a, -10)
+  // back = asciiArrayToString(ascii, 0)
+
+
+
+  
+
+  console.log("level", unlockAmt)
+
+
+  if (unlockAmt == 5){
+    document.getElementById("finished").style.visibility="visible"
+  }
+
+  function decode(){
+    val = document.getElementById("encoder").value
+    ascii = stringToAsciiArray(val, -10)
+    back = asciiArrayToString(ascii, 0)
+    document.getElementById("res").innerHTML = back
+
+  }
+
+
+
+
+  function resizeCanvas() {
+    console.log("resizing")
+    var canvas = document.getElementById('board');
+    var maxWidth = window.innerWidth; // Viewport width
+    var maxHeight = window.innerHeight; // Viewport height
+    var size = Math.min(maxWidth, maxHeight);
+
+
+    
+
+
+    // Adjust for high DPI displays
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+
+    canvasH = size;
+    canvasW = size;
+
+    console.log(size, canvas.style.width, canvas.style.height, dpr)
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    draw_board()
+  }
+
+
+
+  // Initial resize
+  resizeCanvas();
+
+  // Resize canvas on viewport size change
+  window.addEventListener('resize', resizeCanvas);
+
+
+
+  function draw_board(){
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvasW, canvasH);
+
+
+    for (let level=0; level<5; level++){
+      ctx.beginPath();
+      const x = canvasW*(level*0.2+0.1)
+      if (level < unlockAmt){ // unlocked
+        ctx.fillStyle = "rgb(0,150,0)"
+      } else if (level == unlockAmt){ // current
+        ctx.fillStyle = "rgb(0,0,150)"
+      } else { // locked
+        ctx.fillStyle = "rgb(150,0,0)"
+      }
+      ctx.strokeStyle=ctx.fillStyle;
+      ctx.arc(x, canvasH*0.5, canvasW/20, 0, 2 * Math.PI);
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.beginPath()
+      if (level < unlockAmt){ // unlocked
+        ctx.fillStyle = "rgb(0,255,0)"
+      } else if (level == unlockAmt){ // current
+        ctx.fillStyle = "rgb(0,0,255)"
+      } else { // red
+        ctx.fillStyle = "rgb(255,0,0)"
+
+      }
+      ctx.strokeStyle=ctx.fillStyle;
+      ctx.arc(x, canvasH*0.5, canvasW/20-10, 0, 2 * Math.PI);
+      ctx.fill()
+      ctx.stroke()
+
+
+      ctx.font = "32px serif";
+      ctx.fillStyle = "black"
+      ctx.fillText(level, x, canvasH*0.5-40-canvasW/20);
+    }
+
+    let x = canvasW-300; // Starting X position
+    let y = 50; // Starting Y position
+    let w = 30; // Width of the heart
+    let h = 50; // Height of the heart
+
+    // Scaling factors based on original size
+    let scaleX = w / 100;
+    let scaleY = h / 120;
+
+    // Start a new path
+    ctx.beginPath();
+
+    // Move to the starting point of the first curve, adjusted by x and y
+    ctx.moveTo(x + 75 * scaleX, y + 40 * scaleY);
+
+    // Draw the first half of the heart using a cubic Bezier curve, adjusted by x, y, and scale
+    ctx.bezierCurveTo(
+      x + 75 * scaleX, y + 37 * scaleY,
+      x + 70 * scaleX, y + 25 * scaleY,
+      x + 50 * scaleX, y + 25 * scaleY
+    );
+    ctx.bezierCurveTo(
+      x + 20 * scaleX, y + 25 * scaleY,
+      x + 20 * scaleX, y + 62.5 * scaleY,
+      x + 20 * scaleX, y + 62.5 * scaleY
+    );
+    ctx.bezierCurveTo(
+      x + 20 * scaleX, y + 80 * scaleY,
+      x + 40 * scaleX, y + 102 * scaleY,
+      x + 75 * scaleX, y + 120 * scaleY
+    );
+    ctx.bezierCurveTo(
+      x + 110 * scaleX, y + 102 * scaleY,
+      x + 130 * scaleX, y + 80 * scaleY,
+      x + 130 * scaleX, y + 62.5 * scaleY
+    );
+    ctx.bezierCurveTo(
+      x + 130 * scaleX, y + 62.5 * scaleY,
+      x + 130 * scaleX, y + 25 * scaleY,
+      x + 100 * scaleX, y + 25 * scaleY
+    );
+    ctx.bezierCurveTo(
+      x + 85 * scaleX, y + 25 * scaleY,
+      x + 75 * scaleX, y + 37 * scaleY,
+      x + 75 * scaleX, y + 40 * scaleY
+    );
+
+    // Complete the path
+    ctx.closePath();
+
+    // Style the heart
+    ctx.fillStyle = 'red';
+    ctx.fill();
+
+    // Optionally, draw the stroke
+    ctx.stroke();
+
+
+    ctx.font = "32px serif";
+    ctx.fillStyle = "black"
+    ctx.fillText(numLives, x+80, y+40);
+
+
+    if (levelSelected >= 0){
+      ctx.fillStyle = "pink"
+      ctx.fillRect(canvasW*0.5-200, canvasH*0.5+200, 440, 100)
+      ctx.fillStyle = "black"
+      ctx.font = "64px serif";
+      ctx.fillText("Start Level: " + levelSelected, canvasW*0.5-150, canvasH*0.5+250);
+    }
+
+
+
+
+  }
+
+
+
+  var lastMouseSpot = [-1, -1]
+
+
+  function processMouseUp(mouseX, mouseY){
+    console.log("click", mouseX, mouseY)
+
+    let touched = false;
+    for (let level=0; level<5; level++){
+      const x = canvasW*(level*0.2+0.1)
+      const y = canvasH*0.5;
+
+      const dist = Math.pow((mouseX-x), 2) + Math.pow((mouseY-y), 2)
+      if (dist < Math.pow(canvasW/20-10, 2)){
+        console.log("level", level)
+
+        if (level > unlockAmt){
+          console.log("not yet unlocked");
+        }
+        levelSelected = level;
+        draw_board()
+        touched = true;
+        break
+      }
+    }
+
+    if (!touched && levelSelected >= 0){
+      if (mouseX > canvasW*0.5-200 && mouseX < canvasW*0.5-200 + 440 && mouseY > canvasH*0.5+200 && mouseY < canvasH*0.5+200 + 100){
+        console.log("starting level", levelSelected)
+        location.href = "candy_crush.html?level=" + levelSelected + "&liveStatus=" + numLives
+      }
+
+    }
+
+  }
+
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+    
+    const canvas = document.getElementById("board");
+
+
+    function getTouchPos(canvasDom, touchEvent) {
+      var rect = canvasDom.getBoundingClientRect();
+      return {
+        x: touchEvent.touches[0].clientX - rect.left,
+        y: touchEvent.touches[0].clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener("touchstart", function (e) {
+        mousePos = getTouchPos(canvas, e);
+        var touch = e.touches[0];
+        const mouseX = touch.clientX;
+        const mouseY = touch.clientY;
+        lastMouseSpot = [mouseX, mouseY]
+        // console.log(mouseDownGrid)
+         e.preventDefault();
+      }, false);
+
+
+    canvas.addEventListener("touchend", function (e) {
+      processMouseUp(lastMouseSpot[0], lastMouseSpot[1])
+       e.preventDefault();
+    }, false);
+
+
+
+    canvas.addEventListener("mouseup", function(e) {
+
+      scale = 1;
+
+      const mouseX = (event.clientX - canvas.getBoundingClientRect().left);
+      const mouseY = (event.clientY - canvas.getBoundingClientRect().top);
+
+      processMouseUp(mouseX, mouseY);
+       e.preventDefault();
+    });
+
+
+
+  });
+
 
 
 </script>
