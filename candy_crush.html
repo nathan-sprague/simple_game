@@ -24,6 +24,8 @@
 
 <span id="level" style="font-size: 40px;">Level: N/A</span><br>
 
+<br>
+<span style="font-size:40px;">Use Images</span> <input id="useImgs" type="checkbox" checked style="height:40px;width:40px;" name="use inputs" onclick="draw_level();"><br>
 <input type="button" style="height:100px;width:300px;font-size:40px;" value="Home" onclick="location.href = 'index.html';">
 
 
@@ -31,7 +33,7 @@
 
   levelMoves = [20, 15, 15, 15, 15]
 
-  levelCrush = [20*3+5, 15*3+5, 15*3+5, 15*3+5, 15*3+10]
+  levelCrush = [20*3, 15*3+3, 15*3+5, 15*3+5, 15*3+10]
 
   levelMaxColors = [7, 8, 9, 10, 11]
 
@@ -63,6 +65,7 @@
 
 
 
+  var blockImgs = []
   const blockColors = ['N/A','brown', "fuchsia", 'olive', 'teal', 'red', 'blue', 'green', 'yellow', 'orange', 'gray', "purple", "cyan"]
   var canvasW =  700;
   var canvasH = 700;
@@ -144,6 +147,48 @@
   document.getElementById("level").innerHTML = "Level: " + level;
   
 
+  // window.onload = function() {
+  //     // var canvas = document.getElementById('board');
+  //     // var ctx = canvas.getContext('2d');
+
+  //     for (let i=0; i<10; i++){
+  //       var img = new Image();
+
+  //       img.onload = function() {
+  //           blockImgs.push(img)
+  //           console.log("added image", blockImgs.length)
+  //           if (blockImgs.length == 10){
+  //             console.log("done")
+  //           }
+  //       };
+
+  //       // Specify the source of the image
+  //       img.src = 'img' + (i+1) + '.png'; // Ensure the path is correct relative to where the HTML file is served
+  //     }
+  // };
+
+  window.onload = function() {
+
+    for (let i = 0; i < 10; i++) {
+        (function(index) {
+            var img = new Image();
+
+            img.onload = function() {
+                blockImgs.push(img);
+                console.log("added image", blockImgs.length);
+                if (blockImgs.length == 10) {
+                  console.log("done");
+                  console.log(blockImgs)
+                  draw_level();
+                }
+            };
+
+            // Specify the source of the image with the current index
+            img.src = 'img' + (index + 1) + '.png'; // Adjust path as necessary
+        })(i);
+    }
+};
+
   var noMovesWindowUp = false;
 
 
@@ -182,6 +227,7 @@
     const canvas = document.getElementById("board");
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvasW, canvasH);
+    let useImgs = document.getElementById("useImgs").checked
 
 
     if (animating){
@@ -194,11 +240,19 @@
 
         const blockType = blockColors[blocks[b][2]]
         ctx.fillStyle = blockType
+        ctx.strokeStyle = blockType
         ctx.fillRect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
         
-        ctx.beginPath()
-        ctx.rect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
-        ctx.stroke()
+
+        // ctx.beginPath()
+        // ctx.rect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
+        // ctx.stroke()
+
+        if (useImgs){
+          if (blocks[b][2]-1 < blockImgs.length){
+            ctx.drawImage(blockImgs[blocks[b][2]-1], (blocks[b][0]+0.1)*BLOCKSIZE, (blocks[b][1]+0.1)*BLOCKSIZE, BLOCKSIZE*0.8, BLOCKSIZE*0.8);
+          } 
+        }
 
 
         if (blocks[b][1] < GRIDSIZE-1.1){
@@ -286,11 +340,16 @@
       for (let b = 0; b < blocks.length; b++) {
         const blockType = blockColors[blocks[b][2]]
         ctx.fillStyle = blockType
+        ctx.strokeStyle = blockType
         ctx.fillRect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
         
-        ctx.beginPath()
-        ctx.rect(blocks[b][0]*BLOCKSIZE, (blocks[b][1])*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
-        ctx.stroke()
+
+        if (useImgs){
+          if (blocks[b][2]-1 < blockImgs.length){
+            ctx.drawImage(blockImgs[blocks[b][2]-1], (blocks[b][0]+0.1)*BLOCKSIZE, (blocks[b][1]+0.1)*BLOCKSIZE, BLOCKSIZE*0.8, BLOCKSIZE*0.8);
+          } 
+        }
+
       }
 
       for (let i=0; i<2; i++) {
@@ -336,11 +395,17 @@
           if (blockType != 'N/A') {
             
             ctx.fillStyle = blockType
+            ctx.strokeStyle = blockType
             ctx.fillRect(row_num*BLOCKSIZE, col_num*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
             
-            ctx.beginPath()
-            ctx.rect(row_num*BLOCKSIZE, col_num*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
-            ctx.stroke()
+            
+
+            if (useImgs){
+              if (grid[row_num][col_num]-1 < blockImgs.length){
+                ctx.drawImage(blockImgs[grid[row_num][col_num]-1], (row_num+0.1)*BLOCKSIZE, (col_num+0.1)*BLOCKSIZE, BLOCKSIZE*0.8, BLOCKSIZE*0.8);
+              } 
+            }
+
             console.log("bs", BLOCKSIZE)
 
             // ctx.font = "16px serif";
@@ -795,7 +860,7 @@
   });
 
   generate_level();
-  draw_level();
+  
 
 
   // clearInterval(loopInterval);
